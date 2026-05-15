@@ -1,0 +1,5 @@
+test,metric,PICL,Random Baseline
+Test 1 (Cause-Activation),fraction of hard edges where do(f=1) increases gas,1.000  (11/11 edges),0.500
+Test 2 (Cause-Removal),mean disablement on hard gas / on non-hard gas (avg over faults),1.525x,1.000
+Test 3 (Non-Cause Independence),mean |do| on non-causal pairs / mean |do| on causal pairs,0.252,1.000
+Test 4 (Sufficiency Asymmetry),top-1 argmax-Es matches true label (test set),0.685 ± 0.007,0.167

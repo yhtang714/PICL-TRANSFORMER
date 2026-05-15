@@ -1,0 +1,3 @@
+method,total_samples,n_NaN_rejected,n_zero_gas_rejected,n_rule_no_match,n_classified,coverage,acc_on_full,acc_on_covered_only
+DRM,330,54,15,164,97,0.29393939393939394,0.19696969696969696,0.6701030927835051
+DTM,330,54,0,0,276,0.8363636363636363,0.22121212121212122,0.2644927536231884

@@ -1,0 +1,8 @@
+method,implementation,params
+GNB,sklearn.naive_bayes.GaussianNB,all defaults
+GMM,sklearn.mixture.GaussianMixture,"per-class n_components=2, covariance_type='full'"
+SVM,sklearn.svm.SVC,"kernel='rbf', C=1.0, gamma='scale' (sklearn defaults)"
+Random Forest,sklearn.ensemble.RandomForestClassifier,"n_estimators=300, max_depth=None, n_jobs=-1, other defaults"
+XGBoost,xgboost.XGBClassifier,"n_estimators=300, max_depth=5, learning_rate=0.05, eval_metric='mlogloss', n_jobs=-1"
+ANN (MLP),sklearn.neural_network.MLPClassifier,"hidden_layer_sizes=(64,32), max_iter=500 (DID NOT CONVERGE on any of 5 seeds)"
+CNN,custom torch (Conv1d(1->16)->Conv1d(16->32)->Linear(160->64)->Linear(64->6)),"Adam lr=1e-3 weight_decay=1e-4, 80 epochs, batch 64"

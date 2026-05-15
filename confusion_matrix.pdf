@@ -1,0 +1,104 @@
+from __future__ import annotations
+import json
+from pathlib import Path
+import numpy as np
+import torch
+from picl.config import load_config
+from picl.data import load_picl_datasets
+from picl.scm import LinearGaussianSCM
+from picl.graph import HybridCausalGraph
+
+def main():
+    cfg = load_config('config/config.yaml', 'config/prior_knowledge.yaml')
+    train_ds, _, test_ds = load_picl_datasets(cfg)
+    n_sources = int(cfg.raw['data']['n_sources'])
+    graph = HybridCausalGraph(cfg)
+    scm = LinearGaussianSCM(n_vars=cfg.n_vars, n_sources=n_sources, init_log_var=float(cfg.raw['model']['noise_log_var_init']))
+    ckpt = torch.load('results/models/picl_final_model.pt', map_location='cpu', weights_only=False)
+    graph.load_state_dict(ckpt['graph_state'])
+    scm.load_state_dict(ckpt['scm_state'])
+    n_faults = cfg.n_faults
+    fault_names = cfg.fault_names
+    gas_names = cfg.gas_names
+    print('=' * 70)
+    print('EXPERIMENT 1: Sign consistency of fault -> gas causal weights')
+    print('=' * 70)
+    with torch.no_grad():
+        W = graph.weight_matrix().detach().numpy()
+    n_total_fg = 0
+    n_pos = 0
+    n_neg = 0
+    n_zero = 0
+    print(f'\n{'Edge':<18s}  {'Weight':>8s}  Sign')
+    print('-' * 40)
+    for u, src in enumerate(fault_names):
+        for v, tgt in enumerate(gas_names):
+            v_idx = n_faults + v
+            w = W[u, v_idx]
+            n_total_fg += 1
+            if abs(w) < 0.001:
+                n_zero += 1
+                tag = 'zero'
+            elif w > 0:
+                n_pos += 1
+                tag = 'positive'
+            else:
+                n_neg += 1
+                tag = 'NEGATIVE'
+            if abs(w) > 0.01:
+                print(f'{src:>3} -> {tgt:<5}     {w:+8.4f}   {tag}')
+    print()
+    print(f'Total fault->gas edges (excluding zero): {n_total_fg - n_zero}/{n_total_fg}')
+    print(f'  positive : {n_pos:3d}')
+    print(f'  zero     : {n_zero:3d}')
+    print(f'  negative : {n_neg:3d}  <- should be 0 for IEC 60599 consistency')
+    sign_consistency = (n_pos + n_zero) / n_total_fg
+    print(f'  sign-consistency rate: {sign_consistency * 100:.1f}%')
+    print()
+    print('=' * 70)
+    print('EXPERIMENT 2: Hard-edge effect size on test set')
+    print('=' * 70)
+    print()
+    print('For each hard edge fault->gas, compute the mean log1p(ppm) of')
+    print('that gas in the test samples of the source class versus the')
+    print("mean over other classes. Cohen's d effect size.")
+    print()
+    test_log_ppm = test_ds.log_ppm.numpy()
+    test_labels = test_ds.labels.numpy()
+    print(f'{'Edge':<18s}  {'mean(in)':>9s}  {'mean(out)':>9s}  {'d':>6s}')
+    print('-' * 50)
+    hard_summary = []
+    for e in cfg.hard_edges:
+        u = fault_names.index(e.src)
+        v = gas_names.index(e.tgt)
+        in_mask = test_labels == u
+        out_mask = ~in_mask
+        in_vals = test_log_ppm[in_mask, v]
+        out_vals = test_log_ppm[out_mask, v]
+        m_in = float(in_vals.mean())
+        m_out = float(out_vals.mean())
+        s_pool = float(np.sqrt(0.5 * (in_vals.var(ddof=1) + out_vals.var(ddof=1))))
+        d = (m_in - m_out) / max(s_pool, 1e-08)
+        print(f'{e.src:>3} -> {e.tgt:<5}     {m_in:>9.3f}  {m_out:>9.3f}  {d:>+6.2f}')
+        hard_summary.append({'src': e.src, 'tgt': e.tgt, 'mean_in_class': m_in, 'mean_out_class': m_out, 'cohens_d': d})
+    print()
+    print('Effect size guide: |d|>0.2 small, >0.5 medium, >0.8 large')
+    print()
+    print('=' * 70)
+    print('EXPERIMENT 3: Hard-edge weight signs')
+    print('=' * 70)
+    print()
+    hard_w = graph.hard_weights().detach().numpy()
+    n_hard_pos = int((hard_w > 0).sum())
+    print(f'{'Edge':<18s}  {'w':>8s}  {'positive?':>9s}')
+    print('-' * 42)
+    for i, e in enumerate(cfg.hard_edges):
+        print(f'{e.src:>3} -> {e.tgt:<5}     {hard_w[i]:+8.4f}  {('YES' if hard_w[i] > 0 else 'NO'):>9s}')
+    print(f'\nHard-edge positivity: {n_hard_pos}/{len(cfg.hard_edges)} ({100 * n_hard_pos / len(cfg.hard_edges):.0f}%)')
+    summary = {'experiment_1_sign_consistency': {'total_fault_to_gas_edges': n_total_fg, 'positive': n_pos, 'zero': n_zero, 'negative': n_neg, 'rate': sign_consistency}, 'experiment_2_effect_sizes': hard_summary, 'experiment_3_hard_edge_positivity': {'n_hard_positive': n_hard_pos, 'n_hard_total': len(cfg.hard_edges), 'weights': [{'src': e.src, 'tgt': e.tgt, 'weight': float(hard_w[i])} for i, e in enumerate(cfg.hard_edges)]}}
+    Path('results').mkdir(exist_ok=True)
+    with open('results/physical_consistency.json', 'w') as f:
+        json.dump(summary, f, indent=2)
+    print('\nSaved measurements to results/physical_consistency.json')
+if __name__ == '__main__':
+    main()

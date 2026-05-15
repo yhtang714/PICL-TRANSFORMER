@@ -1,0 +1,69 @@
+# ----------------------------------------------------------------------
+# PICL prior knowledge.
+#
+# Hard edges encode the defining fault-gas relationships from IEC 60599
+# and IEEE C57.104. These are gases that are always present in significant
+# amounts when the fault occurs, in the sense that the fault would not be
+# diagnosable as such without that gas being elevated.
+#
+# Plausible edges are secondary or condition-dependent relationships from
+# the same standards. They occur in many cases but with strength that
+# varies with operating conditions, oil chemistry, and fault duration.
+#
+# Forbidden edges (gas -> fault directions and self-loops) are enumerated
+# programmatically in code.
+# ----------------------------------------------------------------------
+
+hard_edges:
+  # PD: corona produces H2 as the defining product (low-energy electron
+  # impact on dissolved gas precursors). CH4 sometimes appears.
+  - {src: PD, tgt: H2,   pi: 1.0, rationale: "PD: hydrogen is the defining gas of corona discharge"}
+
+  # D1 (low-energy discharge): C2H2 from C-H bond cracking, plus H2.
+  # Both are always present and elevated together.
+  - {src: D1, tgt: C2H2, pi: 1.0, rationale: "D1: acetylene is the defining product of low-energy discharge"}
+  - {src: D1, tgt: H2,   pi: 1.0, rationale: "D1: hydrogen is co-produced with acetylene in low-energy discharges"}
+
+  # D2 (high-energy arcing): same gases as D1 but in larger amounts.
+  - {src: D2, tgt: C2H2, pi: 1.0, rationale: "D2: acetylene is the defining product of high-energy arcing"}
+  - {src: D2, tgt: H2,   pi: 1.0, rationale: "D2: hydrogen is co-produced in arcing"}
+
+  # T1 (T < 300 C): saturated hydrocarbon regime. CH4 dominates and C2H6
+  # is the signature secondary gas (saturated C-C bonds intact).
+  - {src: T1, tgt: CH4,  pi: 1.0, rationale: "T1: methane dominates at low temperature"}
+  - {src: T1, tgt: C2H6, pi: 1.0, rationale: "T1: ethane is a defining low-temperature thermal signature"}
+
+  # T2 (300-700 C): C2H4 starts dominating, but C2H6 is still elevated
+  # since the C-C bond cracking is incomplete.
+  - {src: T2, tgt: C2H4, pi: 1.0, rationale: "T2: ethylene dominates at mid temperature"}
+  - {src: T2, tgt: C2H6, pi: 1.0, rationale: "T2: ethane remains elevated through the mid-temperature range"}
+
+  # T3 (T > 700 C): ethylene peaks. Despite progressive cracking, residual
+  # ethane is still well above background and forms part of the signature.
+  - {src: T3, tgt: C2H4, pi: 1.0, rationale: "T3: ethylene is the dominant high-temperature product"}
+  - {src: T3, tgt: C2H6, pi: 1.0, rationale: "T3: ethane remains a measurable component of the high-temperature mix"}
+
+
+plausible_edges:
+  # PD secondary: methane occasionally appears in extended corona events.
+  - {src: PD, tgt: CH4,  pi: 0.30, rationale: "PD -> CH4: methane in some corona events, condition-dependent"}
+
+  # D1, D2 secondary products: thermal cracking accompanies discharge,
+  # producing CH4, C2H4, and traces of C2H6.
+  - {src: D1, tgt: CH4,  pi: 0.50, rationale: "D1 -> CH4: thermal byproduct of arc heating"}
+  - {src: D1, tgt: C2H4, pi: 0.45, rationale: "D1 -> C2H4: thermal cracking accompanies discharge"}
+  - {src: D2, tgt: CH4,  pi: 0.55, rationale: "D2 -> CH4: thermal byproduct of high-energy arcing"}
+  - {src: D2, tgt: C2H4, pi: 0.55, rationale: "D2 -> C2H4: high-energy arcing also cracks longer chains"}
+
+  # T1, T2 secondary: methane elevation continues at T2.
+  - {src: T2, tgt: CH4,  pi: 0.55, rationale: "T2 -> CH4: methane elevation continues into mid temperature"}
+
+  # T3 secondary: H2 from extreme cracking, CH4 carryover, sometimes
+  # trace C2H2 from very high temperature.
+  - {src: T3, tgt: H2,   pi: 0.55, rationale: "T3 -> H2: extreme thermal cracking releases hydrogen"}
+  - {src: T3, tgt: CH4,  pi: 0.40, rationale: "T3 -> CH4: methane carryover from cracking cascade"}
+  - {src: T3, tgt: C2H2, pi: 0.20, rationale: "T3 -> C2H2: trace acetylene appears at extreme temperature"}
+
+# All remaining fault -> gas pairs not listed above receive a uniform
+# Beta(1,1) prior. Forbidden edges (gas -> fault, self-loops) are
+# enumerated programmatically.

@@ -1,0 +1,2 @@
+mean_cause_effect_size,std_cause_effect_size,mean_noncause_effect_size,std_noncause_effect_size,ratio_noncause_over_cause,n_seeds
+0.9574808142401956,0.007862626594915425,0.24167646216718777,0.0160742252335571,0.2524086734405942,5

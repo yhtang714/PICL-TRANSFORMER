@@ -1,0 +1,5 @@
+method,search_space,fault_gas_edges,gas_gas_edges,test_acc
+HillClimb,fault->gas only,15,0,0.7636363636363637
+GES,fault->gas only,26,0,0.8666666666666667
+NOTEARS (as run),fault->gas + gas->gas allowed,19,9,0.6696969696969697
+NOTEARS (fair re-run),fault->gas only,25,0,0.8484848484848485
